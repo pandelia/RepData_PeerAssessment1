@@ -1,25 +1,123 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "PA1_template"
+author: "Pantelia"
+date: "2026-05-04"
+output: html_document
 ---
+##1. Code for reading in the dataset and/or processing the data
+#Load the libraries and save the data
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(dplyr)
+library(lattice)
+
+data <- read.csv("activity.csv")
+data$date <- as.Date(data$date)
+
+```
+#Create a figure folder
+```{r setup2, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  fig.path = "figure/"
+)
+```
+##2. Histogram of the total number of steps taken each day
+```{r, echo=TRUE}
+daily_steps <- aggregate(steps ~ date, data, sum, na.rm = TRUE)
+```
+#Add Histogram
+```{r, echo=TRUE}
+hist(daily_steps$steps,
+     main = "Total Steps per Day",
+     xlab = "Steps")
+```
+##3.Calculate mean and Median number of steps taken each day
+```{r, echo=TRUE}
+mean(daily_steps$steps)
+median(daily_steps$steps)
+```
+##4. Time series plot of the average number of steps taken 
+-Average steps per interval
+```{r, echo=TRUE}
+interval_avg <- aggregate(steps ~ interval, data, mean, na.rm = TRUE)
+```
 
 
-## Loading and preprocessing the data
+#Plot Time series
+```{r, echo=TRUE}
+plot(interval_avg$interval,
+     interval_avg$steps,
+     type = "l",
+     xlab = "Interval",
+     ylab = "Average Steps",
+     main = "Average Daily Activity Pattern")
+```   
 
+##5. The 5-minute interval that, on average, contains the maximum number of steps. 
+-Max interval and count missing values
+```{r, echo=TRUE}
+interval_avg[which.max(interval_avg$steps), ]
+sum(is.na(data$steps))
+```
+##6. Code to describe and show a strategy for imputing missing data.
+-Imputation strategy: mean per interval
+```{r imputation, echo=TRUE}
+interval_means <- aggregate(steps ~ interval, data, mean, na.rm = TRUE)
 
+data_imputed <- data
 
-## What is mean total number of steps taken per day?
+for(i in 1:nrow(data_imputed)) {
+  if(is.na(data_imputed$steps[i])) {
+    data_imputed$steps[i] <- interval_means$steps[
+      interval_means$interval == data_imputed$interval[i]
+    ]
+  }
+}
+```
+##7. Histogram of the total number of steps taken each day after missing values are imputed. Show mean and medians too
+```{r, echo=TRUE}
+daily_imputed <- aggregate(steps ~ date, data_imputed, sum)
+hist(daily_imputed$steps,
+     main = "Total Steps per Day (Imputed)",
+     xlab = "Steps")
+mean(daily_imputed$steps)
+median(daily_imputed$steps)
+```
 
+#As you can see mean and median slightly changed after imputation 
+##8.Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
+- first create a factor variable foe weekday and weekend
+```{r, echo=TRUE}
+data_imputed$date <- as.Date(data_imputed$date)
 
+data_imputed$daytype <- ifelse(
+  weekdays(data_imputed$date) %in% c("Saturday", "Sunday"),
+  "weekend",
+  "weekday"
+) 
+```
+#Secondly, create average number of steps taken per 5-minute interval across type
 
-## What is the average daily activity pattern?
+```{r avg_pattern, echo=TRUE}
+avg_pattern <- aggregate(
+  steps ~ interval + daytype,
+  data = data_imputed,
+  FUN = mean
+)
+```
+# Finally create the panel plot to compare the average number of steps taken per 5-minute interval accross type
 
+```{r, echo=TRUE}
+library(lattice)
 
-
-## Imputing missing values
-
-
-
-## Are there differences in activity patterns between weekdays and weekends?
+xyplot(
+  steps ~ interval | daytype,
+  data = avg_pattern,
+  type = "l",
+  layout = c(1, 2),
+  xlab = "Interval",
+  ylab = "Average Steps"
+)
+```
